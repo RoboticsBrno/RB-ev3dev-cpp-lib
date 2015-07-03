@@ -1,5 +1,8 @@
 #include "lego_lib.h"
 
+// Stop button instance
+StopButton g_stop_button;
+
 int main()
 {
 	// Init signal handling
@@ -61,4 +64,8 @@ void stop_motors(int signal)
 		std::cerr << "Program failed! Signal " << signal << " caught. Terminating" << std::endl;
 		exit(1);
 	}
+}
+
+void use_stop_button(port_type button_port) {
+	g_stop_button.init(button_port);
 }
