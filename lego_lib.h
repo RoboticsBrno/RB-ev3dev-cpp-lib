@@ -110,6 +110,7 @@ public:
 			while(!terminate.load()) {
 				if(stop_button->isPressed()) {
 					std::cout << "Stop button pressed!\n";
+					stop_motors(-1);
 					std::exit(0); // ToDo: Think about proper way to exit
 				}
 				std::this_thread::sleep_for(std::chrono::milliseconds(20));
