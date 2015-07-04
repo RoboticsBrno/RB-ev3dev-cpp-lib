@@ -331,6 +331,10 @@ class ColorSensor {
 public:
 	ColorSensor(port_type sensor_port) : sensor(sensor_port) {}
 
+	ev3dev::color_sensor& backdoor() {
+		return sensor;
+	}
+
 	/**
 	 * Returns reflected intensity - red LED is on
 	 */
@@ -373,4 +377,59 @@ public:
 	}
 private:
 	ev3dev::color_sensor sensor;
+};
+
+/**
+ * Wrapper for ultrasonic sensor
+ */
+class UltrasonicSensor {
+public:
+	UltrasonicSensor(port_type sensor_port) : sensor(sensor_port) {
+		startSignal();
+	}
+
+	ev3dev::ultrasonic_sensor& backdoor() {
+		return sensor;
+	}
+
+	/**
+	 * Starts sending ultrasonic signal. Signal can be stopped
+	 * by stopSignal. Signal can be heard by another sensor
+	 */
+	void startSignal() {
+		sensor.set_mode(ev3dev::ultrasonic_sensor::mode_us_dist_cm);
+	}
+
+	/**
+	 * Stop sending ultrasonic signal. Signal can be enabled by
+	 * startSignal
+	 */
+	void stopSignal() {
+		sensor.set_mode(ev3dev::ultrasonic_sensor::mode_us_listen);
+	}
+
+	/**
+	 * Returns distance in cm. It has to send signal - be aware of it
+	 */
+	float getDistance() {
+		const auto mode = sensor.mode();
+		if(mode != ev3dev::ultrasonic_sensor::mode_us_dist_cm)
+			sensor.set_mode(ev3dev::ultrasonic_sensor::mode_us_si_cm);
+		float value = (float)sensor.value() / 10;
+		sensor.set_mode(mode);
+		return value;
+	}
+
+	/**
+	 * Returns true, if the sensor hears a signal. Changes the sensor
+	 * mode!
+	 * ToDo: Change this silly name...
+	 */
+	bool doIHearAnything() {
+		sensor.set_mode(ev3dev::ultrasonic_sensor::mode_us_listen);
+		return sensor.value() == 1;
+	}
+
+private:
+	ev3dev::ultrasonic_sensor sensor;
 };
