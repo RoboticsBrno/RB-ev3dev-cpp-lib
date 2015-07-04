@@ -225,22 +225,45 @@ public:
 
 	/**
 	 * Turns the motor into position regulation and
-	 * moves to the given position
+	 * moves to the given position at given speed
+	 * Position is in encoder position, speed is in encoder
+	 * tics per second
 	 */
-	void setPositionAbs(int position) {
+	void setPositionAbs(int position, int speed) {
 		motor.set_speed_regulation_enabled("on");
+		motor.set_speed_sp(speed);
 		motor.set_position_sp(position);
 		motor.run_to_abs_pos();
 	}
 
 	/**
 	 * Turns the motor into position regulation and
-	 * moves to given relative position
+	 * moves to given relative position. See setPositionAbs
+	 * for details
 	 */
-	void setPositionRel(int position) {
-		motor.set_speed_regulation_enabled("off");
+	void setPositionRel(int position, int speed) {
+		motor.set_speed_regulation_enabled("on");
+		motor.set_speed_sp(speed);
 		motor.set_position_sp(position);
 		motor.run_to_rel_pos();
+	}
+
+	/**
+	 * Returns true if the desired position was reached
+	 */
+	bool isPositionReached() {
+		const auto states = motor.state();
+		for(const auto& s : states)
+			std::cout << s << "\n";
+		return !(states.find("running") == states.end());
+	}
+
+	/**
+	 * Waits until the motor reaches given position
+	 */
+	void waitForPosition() {
+		while(!isPositionReached())
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 
 	/**
@@ -250,20 +273,22 @@ public:
 		return motor.position();
 	}
 
+	// Do not use this function, ev3dev doesn't implement them!
+	// And their position PID sucks!
 	/**
 	 * Setups the PID constants for position regulation
 	 * ToDo: Find out the range for these constants!
 	 */
-	void setPositionPID(int p, int i, int d) {
+	/* void setPositionPID(int p, int i, int d) {
 		motor.set_position_p(p);
 		motor.set_position_i(i);
 		motor.set_position_d(d);
-	}
+	}*/
 
 	/**
 	 * Returns constants for position regulator
 	 */
-	int getPositionP() {
+	/* int getPositionP() {
 		return motor.position_p();
 	}
 
@@ -273,7 +298,7 @@ public:
 
 	int getPositionD() {
 		return motor.position_d();
-	}
+	}*/
 
 	/**
 	 * Ignores all regulation and sets the motor power
@@ -297,4 +322,55 @@ public:
 	}
 private:
 	ev3dev::motor motor;
+};
+
+/**
+ * Wrapper for color sensor
+ */
+class ColorSensor {
+public:
+	ColorSensor(port_type sensor_port) : sensor(sensor_port) {}
+
+	/**
+	 * Returns reflected intensity - red LED is on
+	 */
+	int getReflected() {
+		sensor.set_mode(ev3dev::color_sensor::mode_col_reflect);
+		return sensor.value();
+	}
+
+	/**
+	 * Returns reflected intensity in raw values - red LED is on
+	 */
+	int getReflectedRaw() {
+		sensor.set_mode(ev3dev::color_sensor::mode_ref_raw);
+		return sensor.value();
+	}
+
+	/**
+	 * Returns reflected intensity in raw values - RGB is on
+	 */
+	int getReflectedRgbRaw() {
+		sensor.set_mode(ev3dev::color_sensor::mode_rgb_raw);
+		return sensor.value();
+	}
+
+	/**
+	 * Returns ambient color - red LED is off
+	 */
+	int getAmbient() {
+		sensor.set_mode(ev3dev::color_sensor::mode_col_ambient);
+		return sensor.value();
+	}
+
+	/**
+	 * Returns sensed color
+	 * ToDo: Translate numbers into color constants
+	 */
+	int getColor() {
+		sensor.set_mode(ev3dev::color_sensor::mode_col_color);
+		return sensor.value();
+	}
+private:
+	ev3dev::color_sensor sensor;
 };
