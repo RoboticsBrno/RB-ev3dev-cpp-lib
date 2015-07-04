@@ -24,8 +24,9 @@ using ev3dev::INPUT_1;
 using ev3dev::INPUT_2;
 using ev3dev::INPUT_3;
 using ev3dev::INPUT_4;
+using ev3dev::OUTPUT_AUTO;
 using ev3dev::OUTPUT_A;
-using ev3dev::OUTPUT_D;
+using ev3dev::OUTPUT_B;
 using ev3dev::OUTPUT_C;
 using ev3dev::OUTPUT_D;
 
@@ -163,7 +164,7 @@ public:
 	 * 			 speed is in encoder positions per second
 	 */
 	void setSpeed(int speed) {
-		if(speed < 2000 || speed > 2000)
+		if(speed < -2000 || speed > 2000)
 			throw std::runtime_error("Max speed exceeded; "
 					+ std::to_string(abs(speed)) + "of 2000");
 		motor.set_speed_regulation_enabled("on");
@@ -190,6 +191,21 @@ public:
 	}
 
 	/**
+	 * Returns constants for speed regulator
+	 */
+	int getSpeedP() {
+		return motor.speed_regulation_p();
+	}
+
+	int getSpeedI() {
+		return motor.speed_regulation_i();
+	}
+
+	int getSpeedD() {
+		return motor.speed_regulation_d();
+	}
+
+	/**
 	 * Setups start/stop ramp times
 	 * @param start time in ms to achieve full speed
 	 * @param stop time in ms to break down completely
@@ -211,7 +227,7 @@ public:
 	 * moves to the given position
 	 */
 	void setPositionAbs(int position) {
-		motor.set_speed_regulation_enabled("off");
+		motor.set_speed_regulation_enabled("on");
 		motor.set_position_sp(position);
 		motor.run_to_abs_pos();
 	}
@@ -227,6 +243,13 @@ public:
 	}
 
 	/**
+	 * Returns position of the encoder
+	 */
+	int getEncoderPosition() {
+		return motor.position();
+	}
+
+	/**
 	 * Setups the PID constants for position regulation
 	 * ToDo: Find out the range for these constants!
 	 */
@@ -234,6 +257,21 @@ public:
 		motor.set_position_p(p);
 		motor.set_position_i(i);
 		motor.set_position_d(d);
+	}
+
+	/**
+	 * Returns constants for position regulator
+	 */
+	int getPositionP() {
+		return motor.position_p();
+	}
+
+	int getPositionI() {
+		return motor.position_i();
+	}
+
+	int getPositionD() {
+		return motor.position_d();
 	}
 
 	/**
