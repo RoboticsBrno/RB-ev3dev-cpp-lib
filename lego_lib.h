@@ -286,6 +286,7 @@ public:
 					+ std::to_string(abs(power)) + "/100");
 		motor.set_speed_regulation_enabled("off");
 		motor.set_duty_cycle_sp(power);
+		motor.run_forever();
 	}
 
 	/**
