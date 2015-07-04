@@ -43,6 +43,11 @@ int run();
 void stop_motors(int);
 
 /**
+ * Waits for given time
+ */
+void delayMs(int ms);
+
+/**
  * Wrapper around touch_sensor class
  */
 class TouchSensor {
@@ -411,11 +416,11 @@ public:
 	/**
 	 * Returns distance in cm. It has to send signal - be aware of it
 	 */
-	float getDistance() {
+	double getDistance() {
 		const auto mode = sensor.mode();
 		if(mode != ev3dev::ultrasonic_sensor::mode_us_dist_cm)
 			sensor.set_mode(ev3dev::ultrasonic_sensor::mode_us_si_cm);
-		float value = (float)sensor.value() / 10;
+		double value = (double)sensor.value() / 10;
 		sensor.set_mode(mode);
 		return value;
 	}
@@ -432,4 +437,35 @@ public:
 
 private:
 	ev3dev::ultrasonic_sensor sensor;
+};
+
+/**
+ * Wrapper for gyroscopic sensor
+ */
+class GyroSensor {
+public:
+	GyroSensor(port_type sensor_port) : sensor(sensor_port) {}
+
+	ev3dev::gyro_sensor& backdoor() {
+		return sensor;
+	}
+
+	/**
+	 * Returns rotation of the sensor
+	 */
+	double getAngle() {
+		sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_ang);
+		return (double)sensor.value() / 10.0;
+	}
+
+	/**
+	 * Returns angle speed of the sensor
+	 */
+	double getSpeed() {
+		sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_rate);
+		return (double)sensor.value() / 10.0;
+	}
+
+private:
+	ev3dev::gyro_sensor sensor;
 };

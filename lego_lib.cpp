@@ -69,3 +69,7 @@ void stop_motors(int signal)
 void use_stop_button(port_type button_port) {
 	g_stop_button.init(button_port);
 }
+
+void delayMs(int ms) {
+	std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
