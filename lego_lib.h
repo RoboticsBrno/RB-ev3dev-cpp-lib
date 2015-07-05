@@ -14,6 +14,7 @@
 #include <chrono>
 #include <atomic>
 #include <memory>
+#include <unistd.h>
 
 /**
  * Use their names
@@ -91,45 +92,6 @@ public:
 private:
 		ev3dev::touch_sensor sensor;
 };
-
-/**
- * This class represents a stop button - fully automatic program
- * killer.
- */
-class StopButton {
-public:
-	StopButton() : terminate(false) {}
-	~StopButton() {
-		terminate.store(true);
-		if(watch_thread.joinable())
-			watch_thread.join();
-	}
-
-	/**
-	 * Initializes stop button and starts watch thread
-	 */
-	void init(port_type sensor_port) {
-		stop_button.reset(new TouchSensor(sensor_port));
-		terminate.store(false);
-		watch_thread = std::thread([&] {
-			while(!terminate.load()) {
-				if(stop_button->isPressed()) {
-					std::cout << "Stop button pressed!\n";
-					stop_motors(-1);
-					std::exit(0); // ToDo: Think about proper way to exit
-				}
-				std::this_thread::sleep_for(std::chrono::milliseconds(20));
-			}
-		});
-	}
-private:
-	std::atomic_bool terminate;
-	std::unique_ptr<TouchSensor> stop_button;
-	std::thread watch_thread;
-};
-
-// StopButton instance
-extern StopButton g_stop_button;
 
 /**
  * Initializes stop button

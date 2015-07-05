@@ -1,7 +1,5 @@
 #include "lego_lib.h"
 
-// Stop button instance
-StopButton g_stop_button;
 
 int main()
 {
@@ -60,14 +58,45 @@ void stop_motors(int signal)
 	}
 	catch(...) { }
 
-	if(signal != -1) {
+	if(signal != -1 && signal != SIGINT) {
 		std::cerr << "Program failed! Signal " << signal << " caught. Terminating" << std::endl;
+		exit(1);
+	}
+	if(signal == SIGINT) {
+		std::cerr << "Program stopped (probably CTR+C or StopButton)\n";
 		exit(1);
 	}
 }
 
 void use_stop_button(port_type button_port) {
-	g_stop_button.init(button_port);
+	pid_t pid = fork();
+	if (pid == 0) {
+		// Child
+		pid_t parent_id = getppid();
+		try {
+			TouchSensor stop_button(button_port);
+			while(true) {
+				if(stop_button.isPressed() || kill(parent_id, 0) != 0) {
+					kill(parent_id, SIGINT);
+					exit(0);
+				}
+			}
+		}
+		catch(...) {
+			exit(1);
+		}
+	}
+	else {
+		// Parent
+		// Try to open the button to test if it exists!
+		try {
+			TouchSensor stop_button(button_port);
+			stop_button.isPressed();
+		}
+		catch(...) {
+			throw std::runtime_error("Stop button on port " + button_port + " isn't connected!\n");
+		}
+	}
 }
 
 void delayMs(int ms) {
