@@ -80,6 +80,7 @@ void use_stop_button(port_type button_port) {
 					kill(parent_id, SIGINT);
 					exit(0);
 				}
+				delayMs(20);
 			}
 		}
 		catch(...) {
