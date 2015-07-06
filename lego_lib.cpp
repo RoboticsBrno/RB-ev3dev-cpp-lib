@@ -230,3 +230,35 @@ bool waitForConnection() {
 bool isClientConnected() {
 	return g_client_fd != -1;
 }
+
+bool sendString(const std::string& str) {
+	return sendData(str.c_str(), str.size());
+}
+
+bool sendString(const char *str) {
+	return sendData(str, strlen(str));
+}
+
+bool sendData(const char *buff, size_t len) {
+	if(len == 0)
+		return true;
+
+	if(g_client_fd == -1) {
+		std::cerr << "Failed to send data, not connected.";
+		return false;
+	}
+
+	ssize_t res = 0;
+	while(len) {
+		res = write(g_client_fd, buff, len);
+		if(res < 0) {
+			 if(errno == EAGAIN)
+				 continue;
+			 std::cerr << "Failed to send data: " << strerror(errno);
+			 return false;
+		}
+		len -= res;
+		buff += res;
+	}
+	return true;
+}

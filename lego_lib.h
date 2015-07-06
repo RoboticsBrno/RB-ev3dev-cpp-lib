@@ -516,3 +516,9 @@ bool waitForConnection();
  */
 bool isClientConnected();
 
+/**
+ * Sends string over the socket connection
+ */
+bool sendString(const std::string& str);
+bool sendString(const char *str);
+bool sendData(const char *buff, size_t len);
