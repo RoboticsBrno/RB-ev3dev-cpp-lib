@@ -172,7 +172,7 @@ Keys getPressedKeys() {
 	return keys;
 }
 
-bool isKeyPressed(const Keys keys, char key) {
+bool isKeyPressed(const Keys& keys, char key) {
 	return keys.find(key) != keys.end();
 }
 
