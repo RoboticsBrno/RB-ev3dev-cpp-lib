@@ -244,7 +244,7 @@ bool sendData(const char *buff, size_t len) {
 		return true;
 
 	if(g_client_fd == -1) {
-		std::cerr << "Failed to send data, not connected.";
+		std::cerr << "Failed to send data, not connected;
 		return false;
 	}
 
