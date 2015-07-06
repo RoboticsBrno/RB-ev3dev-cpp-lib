@@ -10,11 +10,17 @@
 #include "ev3dev.h"
 #include <iostream>
 #include <csignal>
+#include <vector>
 #include <thread>
 #include <chrono>
 #include <atomic>
 #include <memory>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
+#include <termios.h>
+#include <stropts.h>
+#include <set>
 
 /**
  * Use their names
@@ -39,9 +45,9 @@ using ev3dev::OUTPUT_D;
 int run();
 
 /**
- * Signal handler which disables all outputs of the lego
+ * Signal handler which correctly tears down everything initiated by this library
  */
-void stop_motors(int);
+void teardown(int);
 
 /**
  * Waits for given time
@@ -482,3 +488,31 @@ private:
 	time_point start_time;
 	time_point stop_time;
 };
+
+typedef std::set<char> Keys;
+
+/**
+ * Returns set of pressed keys
+ */
+Keys getPressedKeys();
+
+/**
+ * Returns true if the given key is pressed
+ */
+bool isKeyPressed(const Keys& keys, char key);
+
+/**
+ * Returns number of pressed keys
+ */
+int numberOfPressedKeys(const Keys& keys);
+
+/**
+ * Waits for connection on TCP socket
+ */
+bool waitForConnection();
+
+/**
+ * Returns false if client has disconnected and you should call waitForConnection again
+ */
+bool isClientConnected();
+

@@ -1,15 +1,26 @@
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+
 #include "lego_lib.h"
 
+static int g_sock_fd = -1;
+static int g_client_fd = -1;
+#define PORT 12345
 
 int main()
 {
 	// Init signal handling
-	std::signal(SIGABRT, stop_motors);
-	std::signal(SIGFPE, stop_motors);
-	std::signal(SIGILL, stop_motors);
-	std::signal(SIGINT, stop_motors);
-	std::signal(SIGSEGV, stop_motors);
-	std::signal(SIGTERM, stop_motors);
+	std::signal(SIGABRT, teardown);
+	std::signal(SIGFPE, teardown);
+	std::signal(SIGILL, teardown);
+	std::signal(SIGINT, teardown);
+	std::signal(SIGSEGV, teardown);
+	std::signal(SIGTERM, teardown);
 
 	// Run "run" function in a safe manner
 	int retcode;
@@ -27,12 +38,12 @@ int main()
 		retcode = -1;
 	}
 
-	stop_motors(-1);
+	teardown(-1);
 	std::cout << "Program ended" << std::endl;
 	return retcode;
 }
 
-void stop_motors(int signal)
+void teardown(int signal)
 {
 	try {
 		ev3dev::motor motor(ev3dev::OUTPUT_A);
@@ -57,6 +68,16 @@ void stop_motors(int signal)
 		motor.set_command(ev3dev::motor::command_reset);
 	}
 	catch(...) { }
+
+	if(g_client_fd != -1) {
+		close(g_client_fd);
+		g_client_fd = -1;
+	}
+
+	if(g_sock_fd != -1) {
+		close(g_sock_fd);
+		g_sock_fd = -1;
+	}
 
 	if(signal != -1 && signal != SIGINT) {
 		std::cerr << "Program failed! Signal " << signal << " caught. Terminating" << std::endl;
@@ -102,4 +123,110 @@ void use_stop_button(port_type button_port) {
 
 void delayMs(int ms) {
 	std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+
+int _kbhit() {
+    static const int STDIN = 0;
+    static bool initialized = false;
+
+    if (!initialized) {
+        // Use termios to turn off line buffering
+        termios term;
+        tcgetattr(STDIN, &term);
+        term.c_lflag &= ~ICANON;
+        tcsetattr(STDIN, TCSANOW, &term);
+        setbuf(stdin, NULL);
+        initialized = true;
+    }
+
+    int bytesWaiting;
+    ioctl(STDIN, FIONREAD, &bytesWaiting);
+    return bytesWaiting;
+}
+
+Keys getPressedKeys() {
+	/*int waiting = _kbhit();
+	Keys keys;
+	for(int i = 0; i != waiting; i++)
+		keys.insert(std::cin.get());*/
+
+	char buff[32];
+	Keys keys;
+	ssize_t res;
+
+	if(g_client_fd == -1) {
+		return keys;
+	}
+
+	while((res = read(g_client_fd, buff, sizeof(buff))) > 0) {
+		keys.insert(buff, buff+res);
+	}
+
+	if(res < 0 && errno != EAGAIN) {
+		std::cerr << "Failed to read from client socket: " << strerror(errno) << std::endl;
+	} else if(res == 0 && recv(g_client_fd, NULL, 0, 0) == 0) {
+		std::cerr << "Client disconnected!" << std::endl;
+		close(g_client_fd);
+		g_client_fd = -1;
+	}
+	return keys;
+}
+
+bool isKeyPressed(const Keys keys, char key) {
+	return keys.find(key) != keys.end();
+}
+
+int numberOfPressedKeys(const Keys& keys) {
+	return keys.size();
+}
+
+bool waitForConnection() {
+	struct sockaddr_in serv_addr;
+
+	if(g_client_fd != -1) {
+		close(g_client_fd);
+		g_client_fd = -1;
+	}
+
+	if(g_sock_fd != -1) {
+		close(g_sock_fd);
+		g_sock_fd = -1;
+	}
+
+    g_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+	if(g_sock_fd < 0)
+	{
+		std::cerr << "failed to do socket() " << strerror(errno) << std::endl;
+	    return false;
+	}
+
+	memset((char *)&serv_addr, 0, sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_addr.s_addr = INADDR_ANY;
+	serv_addr.sin_port = htons(PORT);
+
+	const int optval = 1;
+	setsockopt(g_sock_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+
+	if (bind(g_sock_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+	{
+		std::cerr << "failed to bind: " << strerror(errno) << std::endl;
+	    close(g_sock_fd);
+	    g_sock_fd = -1;
+	    return false;
+	}
+
+	listen(g_sock_fd, 5);
+	//fcntl(g_sock_fd, F_SETFL, O_NDELAY); // non-blocking
+
+	while((g_client_fd = accept(g_sock_fd, NULL, NULL)) < 0) {
+		std::cerr << "failed to accept client: " << strerror(errno) << std::endl;
+	}
+
+	ioctl(g_client_fd, FIONBIO, &optval); // non-blocking
+	return true;
+}
+
+bool isClientConnected() {
+	return g_client_fd != -1;
 }
