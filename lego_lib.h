@@ -21,6 +21,7 @@
 #include <termios.h>
 #include <stropts.h>
 #include <set>
+#include <cmath>
 
 /**
  * Use their names
@@ -412,7 +413,7 @@ private:
  */
 class GyroSensor {
 public:
-	GyroSensor(port_type sensor_port) : sensor(sensor_port), offset(0) {}
+	GyroSensor(port_type sensor_port) : sensor(sensor_port) {}
 
 	ev3dev::gyro_sensor& backdoor() {
 		return sensor;
@@ -421,30 +422,32 @@ public:
 	/**
 	 * Returns rotation of the sensor
 	 */
-	double getAngle() {
-		sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_ang);
-		return (double)sensor.value() / 10.0 + offset;
+	int getAngle() {
+		if (sensor.mode() != ev3dev::gyro_sensor::mode_gyro_ang)
+			sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_ang);
+		return sensor.value();
 	}
 
 	/**
 	 * Returns angle speed of the sensor
 	 */
-	double getSpeed() {
+	int getSpeed() {
 		sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_rate);
-		return (double)sensor.value() / 10.0;
+		return sensor.value();
 	}
 
 	/**
 	 * Resets the sensor - set it to zero
 	 */
 	void reset() {
-		sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_ang);
-		offset = -(double)sensor.value() / 10.0 + offset;
+		auto mode = sensor.mode();
+		sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_cal);
+		delayMs(200);
+		sensor.set_mode(mode);
 	}
 
 private:
 	ev3dev::gyro_sensor sensor;
-	double offset;
 };
 
 /**
