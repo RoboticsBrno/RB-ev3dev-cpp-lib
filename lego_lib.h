@@ -142,7 +142,8 @@ public:
 		if(speed < -2000 || speed > 2000)
 			throw std::runtime_error("Max speed exceeded; "
 					+ std::to_string(abs(speed)) + "of 2000");
-		motor.set_speed_regulation_enabled("on");
+		if(motor.speed_regulation_enabled() == "off")
+			motor.set_speed_regulation_enabled("on");
 		motor.set_speed_sp(speed);
 		motor.run_forever();
 	}
@@ -204,7 +205,8 @@ public:
 	 * tics per second
 	 */
 	void setPositionAbs(int position, int speed) {
-		motor.set_speed_regulation_enabled("on");
+		if(motor.speed_regulation_enabled() == "off")
+			motor.set_speed_regulation_enabled("on");
 		motor.set_speed_sp(speed);
 		motor.set_position_sp(position);
 		motor.run_to_abs_pos();
@@ -216,7 +218,8 @@ public:
 	 * for details
 	 */
 	void setPositionRel(int position, int speed) {
-		motor.set_speed_regulation_enabled("on");
+		if(motor.speed_regulation_enabled() == "off")
+			motor.set_speed_regulation_enabled("on");
 		motor.set_speed_sp(speed);
 		motor.set_position_sp(position);
 		motor.run_to_rel_pos();
@@ -283,7 +286,8 @@ public:
 		if(power < -100 || power > 100)
 			throw std::runtime_error("Power out of range: "
 					+ std::to_string(abs(power)) + "/100");
-		motor.set_speed_regulation_enabled("off");
+		if(motor.speed_regulation_enabled() == "on")
+			motor.set_speed_regulation_enabled("off");
 		motor.set_duty_cycle_sp(power);
 		motor.run_forever();
 	}
