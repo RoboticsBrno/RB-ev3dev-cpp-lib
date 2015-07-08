@@ -230,9 +230,7 @@ public:
 	 */
 	bool isPositionReached() {
 		const auto states = motor.state();
-		for(const auto& s : states)
-			std::cout << s << "\n";
-		return !(states.find("running") == states.end());
+		return states.find("running") == states.end();
 	}
 
 	/**
