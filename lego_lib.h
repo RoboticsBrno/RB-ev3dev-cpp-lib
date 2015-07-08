@@ -417,7 +417,9 @@ private:
  */
 class GyroSensor {
 public:
-	GyroSensor(port_type sensor_port) : sensor(sensor_port) {}
+	GyroSensor(port_type sensor_port) : sensor(sensor_port), off(0) {
+		sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_g_a);
+	}
 
 	ev3dev::gyro_sensor& backdoor() {
 		return sensor;
@@ -427,31 +429,26 @@ public:
 	 * Returns rotation of the sensor
 	 */
 	int getAngle() {
-		if (sensor.mode() != ev3dev::gyro_sensor::mode_gyro_ang)
-			sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_ang);
-		return sensor.value() * 2.0; // Weird - the sensor returns half it should...
+		return sensor.value(0) - off;
 	}
 
 	/**
 	 * Returns angle speed of the sensor
 	 */
 	int getSpeed() {
-		sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_rate);
-		return sensor.value();
+		return sensor.value(1);
 	}
 
 	/**
 	 * Resets the sensor - set it to zero
 	 */
 	void reset() {
-		auto mode = sensor.mode();
-		sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_cal);
-		delayMs(200);
-		sensor.set_mode(mode);
+		off = sensor.value(0);
 	}
 
 private:
 	ev3dev::gyro_sensor sensor;
+	int off;
 };
 
 /**
