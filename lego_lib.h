@@ -429,7 +429,7 @@ public:
 	int getAngle() {
 		if (sensor.mode() != ev3dev::gyro_sensor::mode_gyro_ang)
 			sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_ang);
-		return sensor.value();
+		return sensor.value() * 2.0; // Weird - the sensor returns half it should...
 	}
 
 	/**
