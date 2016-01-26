@@ -110,13 +110,31 @@ void use_stop_button(port_type button_port);
  */
 class Motor {
 public:
-	Motor(port_type motor_pin) : motor(motor_pin) {	}
+	Motor(port_type motor_pin, bool invert = false) : motor(motor_pin) {
+		this->makeInverted(invert);
+	}
 
 	/**
 	 * Direct access to underlying ev3dev class
 	 */
 	ev3dev::motor& backdoor() {
 		return motor;
+	}
+
+	/**
+	 * Inverted the motor direction
+	 */
+	void setInverted(bool inv = true)
+	{
+		motor.set_polarity(inv ? "inversed" : "normal");
+	}
+
+	/**
+	 * Is inverted motor direction
+	 */
+	bool isInverted()
+	{
+		return motor.polarity() == "inversed";
 	}
 
 	/**
