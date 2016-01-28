@@ -177,15 +177,18 @@ public:
 
 	/**
 	 * Returns the current speed of the motor
-	 * Speed is in encoder positions per second
+	 * @return Speed in encoder positions per second
 	 */
 	int getSpeed() {
-		return motor.speed_sp();
+		return motor.speed();
 	}
 
 	/**
 	 * Setups the PID constants for speed regulation
 	 * ToDo: Find out the range for these constants!
+	 * @param p proportional constant
+	 * @param p integration constant
+	 * @param p derivative constant
 	 */
 	void setSpeedPID(int p, int i, int d) {
 		motor.set_speed_regulation_p(p);
@@ -194,16 +197,22 @@ public:
 	}
 
 	/**
-	 * Returns constants for speed regulator
+	 * Returns proportional constant for speed regulator
 	 */
 	int getSpeedP() {
 		return motor.speed_regulation_p();
 	}
 
+	/**
+	 * Returns integration constant for speed regulator
+	 */
 	int getSpeedI() {
 		return motor.speed_regulation_i();
 	}
 
+	/**
+	 * Returns derivative constant for speed regulator
+	 */
 	int getSpeedD() {
 		return motor.speed_regulation_d();
 	}
@@ -228,8 +237,8 @@ public:
 	/**
 	 * Turns the motor into position regulation and
 	 * moves to the given position at given speed
-	 * Position is in encoder position, speed is in encoder
-	 * tics per second
+	 * @param position position is in encoder position
+	 * @param speed speed is in encoder tics per second
 	 */
 	void setPositionAbs(int position, int speed) {
 		if(motor.speed_regulation_enabled() == "off")
@@ -241,8 +250,9 @@ public:
 
 	/**
 	 * Turns the motor into position regulation and
-	 * moves to given relative position. See setPositionAbs
-	 * for details
+	 * moves to given relative position.
+	 * @param position position is in encoder position
+	 * @param speed speed is in encoder tics per second
 	 */
 	void setPositionRel(int position, int speed) {
 		if(motor.speed_regulation_enabled() == "off")
