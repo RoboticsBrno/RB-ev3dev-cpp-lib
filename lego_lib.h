@@ -332,14 +332,61 @@ private:
  */
 class ColorSensor {
 public:
-	ColorSensor(port_type sensor_port) : sensor(sensor_port) {}
+	struct Color_t { int r; int g; int b;};
+	enum class color { none, black, blue, green, yellow, red, white, brown};
+	enum class mode { col_reflect, col_ambient, col_color, ref_raw, rgb_raw};
+
+	ColorSensor(port_type sensor_port, mode sensor_mode = mode::col_reflect)
+		: sensor(sensor_port) {
+			this->setMode(sensor_mode);
+			m_sensor_mode = sensor_mode;
+		}
 
 	ev3dev::color_sensor& backdoor() {
 		return sensor;
 	}
 
 	/**
-	 * Returns reflected intensity - red LED is on
+	 * Returns value of sensor without set mode (quicker)
+	 */
+	int getValue() {
+		return sensor.value();
+	}
+
+	/**
+	 * Sets sensor mode
+	 */
+	void setMode(mode sensor_mode = mode::col_reflect) {
+		switch(sensor_mode) {
+			case mode::col_reflect:
+				sensor.set_mode(ev3dev::color_sensor::mode_col_reflect);
+				break;
+			case mode::col_ambient:
+				sensor.set_mode(ev3dev::color_sensor::mode_col_ambient);
+				break;
+			case mode::col_color:
+				sensor.set_mode(ev3dev::color_sensor::mode_col_color);
+				break;
+			case mode::ref_raw:
+				sensor.set_mode(ev3dev::color_sensor::mode_ref_raw);
+				break;
+			case mode::rgb_raw:
+				sensor.set_mode(ev3dev::color_sensor::mode_rgb_raw);
+				break;
+		}
+		m_sensor_mode = sensor_mode;
+	}
+
+	/**
+	 * Returns sensor mode
+	 */
+	mode getMode() {
+		return m_sensor_mode;
+	}
+
+	/**
+	 * Reflected light. Red LED on.
+	 * Returns reflected intensity
 	 */
 	int getReflected() {
 		sensor.set_mode(ev3dev::color_sensor::mode_col_reflect);
@@ -347,7 +394,8 @@ public:
 	}
 
 	/**
-	 * Returns reflected intensity in raw values - red LED is on
+	 * Raw reflected. Red LED on
+	 * Returns reflected intensity in raw values
 	 */
 	int getReflectedRaw() {
 		sensor.set_mode(ev3dev::color_sensor::mode_ref_raw);
@@ -355,15 +403,22 @@ public:
 	}
 
 	/**
-	 * Returns reflected intensity in raw values - RGB is on
+	 * Raw Color Components. All LEDs rapidly cycling, appears white.
+	 * Returns reflected intensity in raw values
+	 * @return struct Color_t {int r; int g; int b;};
 	 */
-	int getReflectedRgbRaw() {
+	Color_t getReflectedRgbRaw() {
+		Color_t color;
 		sensor.set_mode(ev3dev::color_sensor::mode_rgb_raw);
-		return sensor.value();
+		color.r = sensor.value(0);
+		color.g = sensor.value(1);
+		color.b = sensor.value(2);
+		return color;
 	}
 
 	/**
-	 * Returns ambient color - red LED is off
+	 * Ambient light. Red LEDs off.
+	 * Returns ambient color
 	 */
 	int getAmbient() {
 		sensor.set_mode(ev3dev::color_sensor::mode_col_ambient);
@@ -371,6 +426,7 @@ public:
 	}
 
 	/**
+	 * Color. All LEDs rapidly cycling, appears white.
 	 * Returns sensed color
 	 * ToDo: Translate numbers into color constants
 	 */
@@ -380,6 +436,7 @@ public:
 	}
 private:
 	ev3dev::color_sensor sensor;
+	mode m_sensor_mode;
 };
 
 /**
