@@ -61,11 +61,17 @@ void delayMs(int ms);
 class TouchSensor {
 public:
 	TouchSensor(ev3dev::port_type port)
-		try : sensor(port) {}
+		try : sensor(port), m_port(port) {}
 		catch(std::runtime_error& e) {
 			throw std::runtime_error("Cannot open TouchSensor on port " + port + ": " + e.what());
 		}
 
+	/**
+	 * Returns port of this object
+	 */
+	ev3dev::port_type getPort() {
+		return m_port;
+	}
 	/**
 	 * Returns true if the sensor is pressed
 	 */
@@ -98,6 +104,7 @@ public:
 	}
 private:
 		ev3dev::touch_sensor sensor;
+		ev3dev::port_type m_port;
 };
 
 /**
@@ -110,8 +117,8 @@ void use_stop_button(port_type button_port);
  */
 class Motor {
 public:
-	Motor(port_type motor_pin, bool invert = false) : motor(motor_pin) {
-		this->setInverted(invert);
+	Motor(port_type motor_pin) : motor(motor_pin) {
+		//this->setInverted(invert);
 	}
 
 	/**
@@ -121,21 +128,23 @@ public:
 		return motor;
 	}
 
-	/**
-	 * Inverted the motor direction
-	 */
-	void setInverted(bool inv = true)
-	{
-		motor.set_polarity(inv ? "inversed" : "normal");
-	}
-
-	/**
-	 * Is inverted motor direction
-	 */
-	bool isInverted()
-	{
-		return motor.polarity() == "inversed";
-	}
+//	function setInverted doesn't work on older systems,
+//	but it work and was tested on ev3-ev3dev-jessie-2015-12-30
+//	/**
+//	 * Inverted the motor direction
+//	 */
+//	void setInverted(bool inv = true)
+//	{
+//		motor.set_polarity(inv ? "inversed" : "normal");
+//	}
+//
+//	/**
+//	 * Is inverted motor direction
+//	 */
+//	bool isInverted()
+//	{
+//		return motor.polarity() == "inversed";
+//	}
 
 	/**
 	 * Resets the motor to the default state
