@@ -111,7 +111,7 @@ void use_stop_button(port_type button_port);
 class Motor {
 public:
 	Motor(port_type motor_pin, bool invert = false) : motor(motor_pin) {
-		this->makeInverted(invert);
+		this->setInverted(invert);
 	}
 
 	/**
