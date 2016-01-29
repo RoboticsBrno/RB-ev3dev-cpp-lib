@@ -37,6 +37,8 @@ using ev3dev::OUTPUT_A;
 using ev3dev::OUTPUT_B;
 using ev3dev::OUTPUT_C;
 using ev3dev::OUTPUT_D;
+using ev3dev::button;
+using ev3dev::led;
 
 /**
  * Safe replacement of the main function. All exceptions are caught,
@@ -59,6 +61,57 @@ void delayMs(int ms);
  * Waits for given time in microseconds
  */
 void delayUs(int us);
+
+
+
+/**
+ * Wrapper around button class
+ */
+class BrickButton {
+public:
+	BrickButton(ev3dev::button& button) : m_button(button) {};
+
+	/**
+	 * Returns reference of this object
+	 */
+	ev3dev::button& backdoor() {
+		return m_button;
+	}
+
+	/**
+	 * Returns true if the button is pressed
+	 */
+	bool isPressed() {
+		return m_button.pressed() == 1;
+	}
+
+	/**
+	 * Blocks until button is pressed
+	 */
+	void waitForPress() {
+		while(!isPressed())
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+
+	/**
+	 * Blocks until button is read
+	 */
+	void waitForRelease() {
+		while(isPressed())
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+
+	/**
+	 * Block until button is clicked
+	 */
+	void waitForClick() {
+		waitForPress();
+		waitForRelease();
+	}
+
+private:
+	ev3dev::button& m_button;
+};
 
 /**
  * Wrapper around touch_sensor class
