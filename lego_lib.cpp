@@ -121,8 +121,20 @@ void use_stop_button(port_type button_port) {
 	}
 }
 
+/*
+ * Delay in milliseconds
+ * @param us milliseconds
+ */
 void delayMs(int ms) {
 	std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+
+/*
+ * Delay in microseconds
+ * @param us microseconds
+ */
+void delayUs(int us) {
+	std::this_thread::sleep_for(std::chrono::microseconds(us));
 }
 
 int _kbhit() {
