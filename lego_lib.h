@@ -51,9 +51,14 @@ int run();
 void teardown(int);
 
 /**
- * Waits for given time
+ * Waits for given time in milliseconds
  */
 void delayMs(int ms);
+
+/**
+ * Waits for given time in microseconds
+ */
+void delayUs(int us);
 
 /**
  * Wrapper around touch_sensor class
