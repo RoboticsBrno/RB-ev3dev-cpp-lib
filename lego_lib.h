@@ -1,13 +1,14 @@
 #pragma once
 
 /**
- * @author Jan Mrázek
- * This small piece of code includes the ev3 library and ensures
+ * @author Jan Mrázek (yaqwsx), Jarek Páral (jarekp)
+ * This small piece of code includes the ev3dev library and ensures
  * that if your app fails (uncaught exception or bad pointer
  * dereference), all the motors are stopped.
  */
 
 #include "ev3dev.h"
+#include <string>
 #include <iostream>
 #include <csignal>
 #include <vector>
@@ -18,6 +19,12 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <cstring>
 #include <termios.h>
 #include <stropts.h>
 #include <set>
@@ -61,8 +68,6 @@ void delayMs(int ms);
  * Waits for given time in microseconds
  */
 void delayUs(int us);
-
-
 
 /**
  * Wrapper around button class
@@ -651,6 +656,257 @@ private:
 	time_point start_time;
 	time_point stop_time;
 };
+
+/**
+ * Class for create server socket and sending debug information
+ */
+class SocketServer {
+public:
+	/**
+	 * Server type could be BLOCKING or NONBLOCKING
+	 * BLOCKING:
+	 *  - works in same thread as main program
+	 *  - stop main program in function open() till somebody connect on socket
+	 * NONBLOCKING:
+	 *  - works in own thread
+	 *  - waiting in own thread till somebody connect on socket (don't stop main program)
+	 * BOTH (BLOCKING|NONBLOCKING):
+	 *  - no connection on socket: write() => nothing (seems that data were sent)
+	 *  - no connection on socket: read() => waiting on data
+	 */
+	enum class ServerType { BLOCKING, NONBLOCKING};
+
+	SocketServer() : m_server_type(ServerType::BLOCKING), m_server_port(12345), m_sock_fd(-1), m_client_fd(-1),
+		m_terminate_flag(false) {}
+
+	~SocketServer() {
+		m_terminate_flag = true;
+		if (m_sock_fd != -1) {
+			close(m_sock_fd);
+			m_sock_fd = -1;
+		}
+		closeClientSocket();
+		if (m_connect_thread.joinable())
+			m_connect_thread.join();
+	}
+
+	/**
+	 * Open the socket
+	 * @param server_port number of port (default: 12345)
+	 * @param type type of socket (ServerType::BLOCKING|ServerType::NONBLOCKING)
+	 * @return true if successfully open else false
+	 */
+	bool open(int server_port = 12345, ServerType type = ServerType::BLOCKING) {
+		struct sockaddr_in serv_addr;
+		m_server_type = type;
+
+		if(m_client_fd != -1) {
+			close(m_client_fd);
+			m_client_fd = -1;
+		}
+
+		if(m_sock_fd != -1) {
+			close(m_sock_fd);
+			m_sock_fd = -1;
+		}
+
+		m_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+		if(m_sock_fd < 0) {
+			std::cerr << "SocketServer::open: Failed to do socket() - " << strerror(errno) << std::endl;
+			return false;
+		}
+
+		m_server_port = server_port;
+		memset((char *)&serv_addr, 0, sizeof(serv_addr));
+		serv_addr.sin_family = AF_INET;
+		serv_addr.sin_addr.s_addr = INADDR_ANY;
+		serv_addr.sin_port = htons(server_port);
+
+		const int optval = 1;
+		setsockopt(m_sock_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+		// immediate release socket after end of program
+
+		if (bind(m_sock_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+			std::cerr << "SocketServer::open: Failed to bind() - " << strerror(errno) << std::endl;
+			close(m_sock_fd);
+			m_sock_fd = -1;
+			return false;
+		}
+
+		listen(m_sock_fd, 1); // max 1 connection
+
+		if (m_server_type == ServerType::BLOCKING) {
+			waitForClient();
+		}
+		else {
+			m_connect_thread = std::thread([&]() {
+				while (!m_terminate_flag)
+					waitForClient();
+			});
+		}
+
+		return true;
+	}
+
+	/**
+	 * Stop the program while somebody connect on socket
+	 */
+	bool waitForClient() {
+		m_client_fd = accept(m_sock_fd, NULL, NULL);
+		return m_client_fd != -1;
+	}
+
+	/**
+	 * Returns true or false if is somebody connected on socket
+	 */
+	bool isConnected() {
+		return m_client_fd != -1;
+	}
+
+	/**
+	 * Get number of byte in tx socket buffer
+	 */
+	int getAvailable() {
+		if(m_client_fd != -1) {
+			int available_bytes = 0;
+			if(ioctl(m_client_fd, FIONREAD, &available_bytes) == -1)
+				std::cerr << "ServerSocket::getAvailable: error ioctl() - " << strerror(errno);
+			return available_bytes;
+		}
+		return 0;
+	}
+
+	/**
+	 * Returns true if tx buffer will be free
+	 */
+	bool empty() {
+		return getAvailable() == 0;
+	}
+
+	/**
+	 * Send one char to socket
+	 * @param value char to send
+	 * @return number of send chars or error code
+	 */
+	int write(char value) {
+		if(m_client_fd != -1) {
+			int ret = send(m_client_fd, &value, 1, MSG_NOSIGNAL);
+			if(ret == -1)
+				closeClientSocket();
+			return ret;
+		}
+		return 0;
+	}
+
+	/**
+	 * Send data from buffer to socket
+	 * @param buf pointer to const buffer with data
+	 * @param len size of buf (buffer)
+	 * @return number of send chars or error code
+	 */
+	int write(const char * buf, int len) {
+		if(m_client_fd != -1) {
+			int ret = send(m_client_fd, buf, len, MSG_NOSIGNAL);
+			if(ret == -1)
+				closeClientSocket();
+			return ret;
+		}
+		return 0;
+	}
+
+	/**
+	 * Send string to socket
+	 * @param data reference to string with data
+	 * @return number of send chars or error code
+	 */
+	int write(std::string & data) {
+		if(m_client_fd != -1) {
+			int ret = send(m_client_fd, data.c_str(), sizeof(char)*data.size(), MSG_NOSIGNAL);
+			if(ret == -1)
+				closeClientSocket();
+			return ret;
+		}
+		return 0;
+	}
+
+	/**
+	 * Read char from socket
+	 */
+	int read() {
+		char value;
+		if(m_client_fd != -1) {
+			while(empty())
+				delayUs(1);
+			recv(m_client_fd, &value, 1, MSG_NOSIGNAL);
+			return value;
+		}
+		return -1;
+	}
+
+	/**
+	 * Read data to buffer (char buf [len]) from socket
+	 * @param buf pointer to array of chars
+	 * @param len required number of characters/size of array
+	 * @return number of read bytes
+	 */
+	int read(char * buf, int len) {
+		if(m_client_fd != -1) {
+			while(getAvailable() != len)
+				delayUs(1);
+			 int ret = recv(m_client_fd, buf, len, MSG_NOSIGNAL);
+			 return ret;
+		}
+		return 0; // zero characters reads
+	}
+
+	/**
+	 * Read data to string from socket
+	 * @param len required number of characters/size of array
+	 * @return string with data
+	 */
+	std::string read(int len) {
+		if(m_client_fd != -1) {
+			std::string value(len, ' ');
+			while(getAvailable() != len)
+				delayUs(1);
+			recv(m_client_fd, &value[0], len, MSG_NOSIGNAL);
+			return value;
+		}
+		return std::string();
+	}
+
+	void closeClientSocket() {
+		if (m_client_fd != -1) {
+			close(m_client_fd);
+			m_client_fd = -1;
+		}
+	}
+
+	int getPort() {
+		return m_server_port;
+	}
+
+	int getClientFd() {
+		return m_client_fd;
+	}
+
+	int getServerFd() {
+		return m_sock_fd;
+	}
+
+	ServerType getServerType() {
+		return m_server_type;
+	}
+
+private:
+	ServerType m_server_type;
+	int m_server_port;
+	int m_sock_fd;
+	int m_client_fd;
+	std::atomic<bool> m_terminate_flag;
+	std::thread m_connect_thread;
+};
+
 
 typedef std::set<char> Keys;
 
