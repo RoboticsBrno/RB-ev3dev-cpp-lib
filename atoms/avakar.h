@@ -2,11 +2,19 @@
 
 // This file is part of 'Atoms' library - https://github.com/yaqwsx/atoms
 // Author: Jan 'yaqwsx' Mrázek
-// Revision: 6934e561e7c62aecf8b69bf46559a8a5ee2714b6 (2016-02-03)
-	
+// Revision: 35a1be649aebf84dc179de65df9aac0bb9bf882a (2016-02-05)
+
 #include <stdint.h>
 #ifndef ATOMS_NO_EXCEPTION
     #include <exception>
+#endif
+
+// Be aware! ARM is dumb! It doesn't support unaligned access to memory and
+// instead of emulation of failure it silently rounds the address to the first
+// aligned address available. Because of this, new dependency to memcpy 
+// has to be introduced
+#ifdef __arm__
+    #include <cstring>
 #endif
 
 namespace atoms {
@@ -66,10 +74,16 @@ public:
             if (state != State::DONE && state != State::EMPTY)
                 throw std::runtime_error("Avakar packet: get on incomplete packet");
         #endif
+        CharType o = raw_size();
         increase_size(sizeof(T));
         state = State::DONE;
-        T* ptr = reinterpret_cast<T*>(buffer + raw_size());
-        *ptr = data;
+
+        #ifdef __arm__
+            memcpy(buffer + o, &data, sizeof(T));
+        #else
+            T* ptr = reinterpret_cast<T*>(buffer + o);
+            *ptr = data;
+        #endif
     }
 
     // appends array of n same vales to packet, see push
@@ -80,11 +94,17 @@ public:
             if (state != State::DONE && state != State::EMPTY)
                 throw std::runtime_error("Avakar packet: get on incomplete packet");
         #endif
+        CharType o = raw_size();
         increase_size(n * sizeof(T));
         state = State::DONE;
-        T* ptr = reinterpret_cast<T*>(buffer + raw_size());
-        for (uint8_t i = 0; i != n; i++, ptr++)
-            *ptr = data[i]; 
+
+        #ifdef __arm__
+            memcpy(buffer + o, &data, n * sizeof(T));
+        #else
+            T* ptr = reinterpret_cast<T*>(buffer + o);
+            for (uint8_t i = 0; i != n; i++, ptr++)
+                *ptr = data[i]; 
+        #endif
     }
     
     // deserialize the packet using the byte. If the byte leads to complete
@@ -121,6 +141,11 @@ public:
         return state == State::DONE;
     }
 
+// Since ARM handles unaligned access in a wrong way, it isn't safe to keep 
+// this method around
+#ifdef __arm__
+private:
+#endif
     // retrieves pointer to element in packet to access array of values in packet
     // weak out of range check
     // see get
@@ -134,6 +159,9 @@ public:
         #endif
         return reinterpret_cast<T*>(buffer + 2 + index);
     }
+#ifdef __arm__
+public:
+#endif
     
     // retrieve item from completed packet at given index
     // can be called only on completed package
@@ -147,19 +175,25 @@ public:
             if (index + sizeof(T) > size())
                 throw std::runtime_error("Avakar packet: index out of range");
         #endif
-        return *get_ptr<T>(index);
+        #ifdef __arm__
+            T ret;
+            memcpy(&ret, get_ptr<CharType>(index), sizeof(T));
+            return ret;
+        #else
+            return *get_ptr<T>(index);
+        #endif
     }
 
 private:
     enum class State { EMPTY, HEADER, COMMAND, IN_PROGRESS, DONE };
     
-    uint8_t buffer[2 + 16];
+    uint8_t buffer[2 + 15];
     State state;
     uint8_t idx;
     
     void increase_size(CharType s) {
         #ifndef ATOMS_NO_EXCEPTION
-            if (size() + s > 16)
+            if (size() + s > 15)
                 throw std::runtime_error("Avakar packet: size overflow!");
         #endif
         buffer[1] += s;
