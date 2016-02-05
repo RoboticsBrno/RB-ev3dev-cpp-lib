@@ -1,5 +1,7 @@
 #include "lib/lego_lib.h"
 
+#include <vector>
+
 int run()
 {
 	// ==== init ====
@@ -43,22 +45,56 @@ int run()
 	C = server.read(5);
 
 	std::cout << "server.read(): " << A << std::endl;
-	std::cout << "server.read(B, 5): "<< B 
-			  << " (num of bytes: " << b << ")" <<std::endl;
+	
+	// new example for server.read(B, 5)
+	for(int i = 0; i << 5; ++i)
+		std::cout << B[i];
+	std::cout << std::endl;
+	
+	// old example - problem with missing zero character in array B 
+	// -> don't forget on that - B = raw data X "hello" = string
+	//std::cout << "server.read(B, 5): "<< B 
+	//		  << " (num of bytes: " << b << ")" <<std::endl;
+			  
 	std::cout << C << std::endl;
 
-	char ch;
+	std::vector<char> data_for_procesing;
+	
 	while(true) {
-		if(server.getAvailable() != 0) {
-			std::cout << "server - read char: " 
-					  << char(server.read()) << std::endl;
-		}
-
 		std::cout << "server - isConnected(): " 
-				  << server.isConnected() << std::endl;
+			  << server.isConnected() << std::endl;
+	
+		if(server.isConnected()) { 
+			server.write("hello\n", 6);
+			
+			//std::cout << server.read() << endl;
+			//std::cout << server.read(5) << endl;
+			// if you don't use getAvailable()
+			// then function read() waiting on data
 		
-		server.write("hello\n", 6);
-		delayMs(500);
+			// generally is better use getAvailable()
+			// -> returns number of actually available bytes 
+			if(server.getAvailable() != 0) {
+				std::cout << "server - read char: " 
+						  << char(server.read()) << std::endl;
+			}
+			
+			// the best effective way - use own reading buffer
+			// -> avoid slow system call function e.g. recv()
+			char buf[50];	//better placement before while()
+			int available;	//better placement before while()
+			if((available = server.getAvailable()) != 0) {
+				if(available > 50)
+					available = 50;
+				
+				server.read(buf, available);
+				
+				for(int i = 0; i < available; ++i)
+					data_for_procesing.push_back(buf[i]);
+			}
+		}
+		
+		delayMs(100);
 	}
 	
 	return 0;

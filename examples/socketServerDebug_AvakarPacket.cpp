@@ -7,57 +7,75 @@ int run()
 {
 	// ==== init ====
 	SocketServer server;
-	
-	std::cout << "server - waiting for connection on port: "  
+
+	std::cout << "server - waiting for connection on port: "
 			  << server.getPort() << std::endl;
-		  
-	server.open(); 
-	
+
+	server.open();
+
 	std::cout << "server - start" << std::endl;
-	
+
 	// ==== data ====
-	int leftMotorPosition = 1100;
-	int rightMotorPosition = 900;
-	int leftMotorSpeed = 220;
-	int rightMotorSpeed = 180;
-	
+	int leftMotorPosition = 41100;
+	int rightMotorPosition = 35900;
+	int16_t leftMotorSpeed = 220;
+	int16_t rightMotorSpeed = 180;
+
 	// ==== avakar_packet - send ====
+	// max size of packet = 15 bytes
 	atoms::AvakarPacket out; // Create empty packet
     out.set_command(1);
     out.push<int>(leftMotorPosition); 	// size 4 bytes => sum: 4 bytes
     out.push<int>(rightMotorPosition);	// size 4 bytes => sum: 8 bytes
-    out.push<int>(leftMotorSpeed);		// size 4 bytes => sum: 12 bytes
-    out.push<int>(rightMotorSpeed);		// size 4 bytes => sum: 16 bytes
-	// actual size = 16 bytes; 
-	// max size of packet = 16 bytes
-		
+    out.push<int16_t>(leftMotorSpeed);	// size 2 bytes => sum: 10 bytes
+    out.push<int16_t>(rightMotorSpeed);	// size 2 bytes => sum: 12 bytes
+	// actual size = 12 bytes;
+	// max size = 15 bytes
+
     server.write(out.raw(), int(out.raw_size()));
-    
+
 	// ==== avakar_packet - read ====
 	atoms::AvakarPacket in;
-	
-	int Pconst, Iconst, Dconst; 
+
+	int Pconst, Iconst, Dconst;
 	// size = 4 bytes * 3 variables = 12 bytes
+
+	uint8_t P_const, I_const, D_const;
+	// size = 1 bytes * 3 variables = 3 bytes
+
 	while(true) {
 		if(server.getAvailable() != 0) {
 			in.push_byte(server.read());
-			
+
 			if(in.complete()) {
-				if(in.get_command() == 1 && in.size == 12) {
+				if(in.get_command() == 1 && in.size() == 12) {
 					Pconst = in.get<int>(0);
 					Iconst = in.get<int>(4);
 					Dconst = in.get<int>(8);
-					
+
 					std::cout << "P: " << Pconst
 							  << "I: " << Iconst
 							  << "D: " << Dconst << std::endl;
-							  
-					in.clear();
 				}
+
+				if(in.get_command() == 1 && in.size() == 3) {
+					P_const = in.get<uint8_t>(0);
+					I_const = in.get<uint8_t>(1);
+					D_const = in.get<uint8_t>(2);
+
+					std::cout << "P_: " << P_const
+							  << "I_: " << I_const
+							  << "D_: " << D_const << std::endl;
+				}
+
+				in.clear();
+				// important function clear()
+				// before parsing next command
+				// need to clear() the object in
 			}
 		}
 		delayMs(1);
 	}
-	
+
 	return 0;
 }
