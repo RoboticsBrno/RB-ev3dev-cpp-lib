@@ -24,15 +24,15 @@ int run()
 	// ==== avakar_packet - send ====
 	// max size of packet = 15 bytes
 	atoms::AvakarPacket out; // Create empty packet
-    out.set_command(1);
-    out.push<int>(leftMotorPosition); 	// size 4 bytes => sum: 4 bytes
-    out.push<int>(rightMotorPosition);	// size 4 bytes => sum: 8 bytes
-    out.push<int16_t>(leftMotorSpeed);	// size 2 bytes => sum: 10 bytes
-    out.push<int16_t>(rightMotorSpeed);	// size 2 bytes => sum: 12 bytes
+	out.set_command(1);
+	out.push<int>(leftMotorPosition); 	// size 4 bytes => sum: 4 bytes
+	out.push<int>(rightMotorPosition);	// size 4 bytes => sum: 8 bytes
+	out.push<int16_t>(leftMotorSpeed);	// size 2 bytes => sum: 10 bytes
+	out.push<int16_t>(rightMotorSpeed);	// size 2 bytes => sum: 12 bytes
 	// actual size = 12 bytes;
 	// max size = 15 bytes
 
-    server.write(out.raw(), int(out.raw_size()));
+	server.write(out.raw(), int(out.raw_size()));
 
 	// ==== avakar_packet - read ====
 	atoms::AvakarPacket in;
