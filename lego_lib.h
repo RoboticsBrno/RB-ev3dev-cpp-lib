@@ -33,7 +33,7 @@
 /**
  * Use their names
  */
-using ev3dev::port_type;
+using ev3dev::address_type;
 using ev3dev::INPUT_AUTO;
 using ev3dev::INPUT_1;
 using ev3dev::INPUT_2;
@@ -123,7 +123,7 @@ private:
  */
 class TouchSensor {
 public:
-	TouchSensor(ev3dev::port_type port)
+	TouchSensor(ev3dev::address_type port)
 		try : sensor(port), m_port(port) {}
 		catch(std::runtime_error& e) {
 			throw std::runtime_error("Cannot open TouchSensor on port " + port + ": " + e.what());
@@ -132,7 +132,7 @@ public:
 	/**
 	 * Returns port of this object
 	 */
-	ev3dev::port_type getPort() {
+	ev3dev::address_type getPort() {
 		return m_port;
 	}
 	/**
@@ -167,20 +167,20 @@ public:
 	}
 private:
 		ev3dev::touch_sensor sensor;
-		ev3dev::port_type m_port;
+		ev3dev::address_type m_port;
 };
 
 /**
  * Initializes stop button
  */
-void use_stop_button(port_type button_port);
+void use_stop_button(address_type button_port);
 
 /**
  * Wrapper of the motor class
  */
 class Motor {
 public:
-	Motor(port_type motor_pin) : motor(motor_pin) {
+	Motor(address_type motor_pin) : motor(motor_pin) {
 		//this->setInverted(invert);
 	}
 
@@ -409,7 +409,7 @@ public:
 	enum class color { none, black, blue, green, yellow, red, white, brown};
 	enum class mode { col_reflect, col_ambient, col_color, ref_raw, rgb_raw};
 
-	ColorSensor(port_type sensor_port, mode sensor_mode = mode::col_reflect)
+	ColorSensor(address_type sensor_port, mode sensor_mode = mode::col_reflect)
 		: sensor(sensor_port) {
 			this->setMode(sensor_mode);
 			m_sensor_mode = sensor_mode;
@@ -517,7 +517,7 @@ private:
  */
 class UltrasonicSensor {
 public:
-	UltrasonicSensor(port_type sensor_port) : sensor(sensor_port) {
+	UltrasonicSensor(address_type sensor_port) : sensor(sensor_port) {
 		startSignal();
 	}
 
@@ -572,7 +572,7 @@ private:
  */
 class GyroSensor {
 public:
-	GyroSensor(port_type sensor_port) : sensor(sensor_port), off(0) {
+	GyroSensor(address_type sensor_port) : sensor(sensor_port), off(0) {
 		sensor.set_mode(ev3dev::gyro_sensor::mode_gyro_g_a);
 	}
 
