@@ -89,7 +89,7 @@ void teardown(int signal)
 	}
 }
 
-void use_stop_button(port_type button_port) {
+void use_stop_button(address_type button_port) {
 	pid_t pid = fork();
 	if (pid == 0) {
 		// Child
